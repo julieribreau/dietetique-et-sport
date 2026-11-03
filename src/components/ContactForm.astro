@@ -1,0 +1,63 @@
+---
+const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+const { id = 'contact-form', compact = false } = Astro.props;
+---
+
+<form class:list={['contact-form', { compact }]} data-contact-form data-endpoint={endpoint} id={id}>
+  <div class="form-row">
+    <label class="sr-only" for={`${id}-email`}>Votre adresse email</label>
+    <input id={`${id}-email`} type="email" name="email" autocomplete="email" required placeholder="Votre adresse email" />
+    <button type="submit">Prendre rendez-vous</button>
+  </div>
+  {!compact && (
+    <label class="form-choice" for={`${id}-objectif`}>
+      <span>Votre objectif principal</span>
+      <select id={`${id}-objectif`} name="objectif">
+        <option value="">Je souhaite en parler</option>
+        <option>Retrouver une alimentation plus sereine</option>
+        <option>Adapter mon alimentation à ma pratique sportive</option>
+        <option>Préparer un changement de rythme</option>
+        <option>Être accompagnée dans la durée</option>
+      </select>
+    </label>
+  )}
+  <input class="gotcha" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true" />
+  <p class="form-note">Premier échange sans engagement. Vos informations restent confidentielles.</p>
+  <p class="form-feedback" role="status" aria-live="polite"></p>
+</form>
+
+<style>
+  .contact-form { width: 100%; max-width: 38rem; }
+  .form-row { display: flex; flex-wrap: wrap; gap: .7rem; }
+  input[type='email'], select { border: 1px solid var(--line); background: var(--paper); color: var(--ink); font: inherit; padding: .95rem 1rem; }
+  input[type='email'] { flex: 1 1 15rem; min-width: 0; }
+  button { border: 0; background: var(--ink); color: var(--paper); padding: .95rem 1.25rem; font: 500 .85rem/1 inherit; letter-spacing: .03em; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+  button:hover { background: var(--terracotta); transform: translateY(-1px); }
+  .form-choice { display: grid; gap: .45rem; margin-top: .85rem; color: var(--muted); font: .7rem/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+  select { width: 100%; font: 1rem/1.3 var(--sans); letter-spacing: 0; text-transform: none; }
+  .form-note, .form-feedback { margin: .8rem 0 0; color: var(--muted); font-size: .82rem; }
+  .form-feedback { min-height: 1.2em; }
+  .form-feedback[data-state='ok'] { color: var(--ink); font-weight: 600; }
+  .form-feedback[data-state='ko'] { color: var(--terracotta); }
+  .gotcha { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-contact-form]').forEach((form) => {
+    const feedback = form.querySelector<HTMLElement>('.form-feedback')!;
+    const button = form.querySelector<HTMLButtonElement>('button')!;
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const endpoint = form.dataset.endpoint;
+      if (!endpoint) { feedback.dataset.state = 'ko'; feedback.textContent = 'Formulaire à configurer : renseignez PUBLIC_FORM_ENDPOINT.'; return; }
+      button.disabled = true; feedback.textContent = 'Envoi…';
+      try {
+        const response = await fetch(endpoint, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error(String(response.status));
+        form.reset(); feedback.dataset.state = 'ok'; feedback.textContent = 'Merci. Nous revenons vers vous rapidement.';
+      } catch { feedback.dataset.state = 'ko'; feedback.textContent = 'L’envoi a échoué. Réessayez ou écrivez-nous directement.'; }
+      finally { button.disabled = false; }
+    });
+  });
+</script>
